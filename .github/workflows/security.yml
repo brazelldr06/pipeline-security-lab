@@ -18,10 +18,24 @@ jobs:
 
       - name: Secret scan (Gitleaks)
         run: |
+          cat > /tmp/gitleaks.toml <<'EOF'
+          title = "DevSecOps Security Lab"
+
+          [extend]
+          useDefault = true
+
+          [[rules]]
+          id = "planted-aws-example-key"
+          description = "Detect the planted AWS example key"
+          regex = '''AKIAIOSFODNN7EXAMPLE'''
+          keywords = ["AKIAIOSFODNN7EXAMPLE"]
+          EOF
+
           docker run --rm \
             -v "${{ github.workspace }}:/repo" \
+            -v /tmp/gitleaks.toml:/gitleaks.toml:ro \
             zricethezav/gitleaks:v8.24.2 \
-            detect --source=/repo --exit-code 1
+            detect --source=/repo --config=/gitleaks.toml --exit-code 1
 
       - name: SAST scan (Semgrep)
         if: success() || failure()
