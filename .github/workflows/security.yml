@@ -1,0 +1,37 @@
+
+name: security
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Secret scan (Gitleaks)
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/repo" \
+            zricethezav/gitleaks:v8.24.2 \
+            detect --source=/repo --exit-code 1
+
+      - name: SAST scan (Semgrep)
+        if: success() || failure()
+        run: |
+          pip install semgrep
+          semgrep scan --config auto --error
+      - name: Dependency scan (Trivy)
+        if: success() || failure()
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/repo" \
+            aquasec/trivy:0.58.2 \
+            fs --scanners vuln --exit-code 0 /repo
